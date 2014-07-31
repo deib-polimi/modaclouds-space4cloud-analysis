@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- edited with XMLSpy v2013 sp1 (http://www.altova.com) by ﻿Gibbo (GB) -->
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema"  elementFormDefault="qualified" attributeFormDefault="unqualified">
+	<xs:element name="SolutionMultiResult">
+		<xs:complexType>
+			<xs:sequence>
+				<xs:element name="Solution" type="SolutionType" maxOccurs="unbounded"/>
+			</xs:sequence>
+			<xs:attribute name="cost" type="xs:double"/>
+			<xs:attribute name="feasibility" type="xs:boolean"/>
+			<xs:attribute name="generationIteration" type="xs:int"/>
+			<xs:attribute name="generationTime" type="xs:long"/>
+		</xs:complexType>
+	</xs:element>
+	<xs:complexType name="SolutionType">
+		<xs:sequence>
+			<xs:element name="Functionality" type="FunctionalityType" maxOccurs="unbounded"/>
+		</xs:sequence>
+		<xs:attribute name="cost" type="xs:double"/>
+		<xs:attribute name="feasibility" type="xs:boolean"/>
+		<xs:attribute name="generationIteration" type="xs:int"/>
+		<xs:attribute name="generationTime" type="xs:long"/>
+		<xs:attribute name="provider" type="xs:string"/>
+	</xs:complexType>
+	<xs:complexType name="FunctionalityType">
+		<xs:sequence>
+			<xs:element name="HourlyRT" type="HourlyRTType" maxOccurs="unbounded"/>
+		</xs:sequence>
+		<xs:attribute name="id" type="xs:string"/>
+		<xs:attribute name="name"/>
+	</xs:complexType>
+	<xs:complexType name="HourlyRTType">
+		<xs:attribute name="hour" type="xs:int"/>
+		<xs:attribute name="responseTime" type="xs:double"/>
+	</xs:complexType>
+</xs:schema>
