@@ -1,5 +1,7 @@
 package it.polimi.modaclouds.space4cloud.analysis.main;
 
+import it.polimi.modaclouds.space4cloud.analysis.results.ReplicaElement;
+import it.polimi.modaclouds.space4cloud.analysis.results.ResourceContainer;
 import it.polimi.modaclouds.space4cloud.analysis.results.ResourceModelExtension;
 import it.polimi.modaclouds.space4cloud.analysis.results.SolutionMultiResult;
 
@@ -27,6 +29,7 @@ public class Analyzer {
 	protected static final String SOLUTION_PREFIX = "solution";
 	Path baseDir;
 	Path statisticsFile;
+	Path solutionFile;
 
 	public Analyzer() {
 		statisticsMap = new HashMap<String, SolutionMultiResult>();
@@ -52,25 +55,104 @@ public class Analyzer {
 		int result = 0;
 		for(File folder:projectFolders){
 			result = parseStatistics(folder);
-			if(result == -1)
-				return result;
+			if(result == -1){
+				System.out.println("error in project: "+folder);				
+			}
 
 
 			result = parseSolution(folder);
-			if(result == -1)
-				return result;
+			if(result == -1){
+				System.out.println("error in project: "+folder);
+			}
 		}
 
-
+		System.out.println("Aggregating Statistics...");
 		result = exportStatistics();
 		if(result == -1)
 			return result;
 
+		System.out.println("Aggregating Solutions...");
+		result = exportSolutionAggregation();
+		if(result == -1)
+			return result;
+
+		
 
 		return result;
 	}
 
 
+
+	private int exportSolutionAggregation() {
+		PrintWriter writer = null;
+		try {
+			writer = new PrintWriter(solutionFile.toFile());
+		} catch (FileNotFoundException e) {
+			System.out.println("Could not write on "+solutionFile.toAbsolutePath());
+			return -1;
+		}
+		
+
+		//TODO: manage the multicloud case
+		Map<String,Map<String,String>> types = new HashMap<String, Map<String,String>>(solutionsMap.size());
+		Map<String,Map<String,List<Integer>>> replicas = new HashMap<String, Map<String,List<Integer>>>(solutionsMap.size());
+		for(String name:statisticsMap.keySet()){
+			List<ResourceModelExtension> extensions = solutionsMap.get(name);
+			for(ResourceModelExtension extension:extensions){
+				//TODO: in the multi-cloud we should get the provider here
+				Map<String,String> tierTypes = new HashMap<String,String>(extension.getResourceContainer().size());
+				Map<String,List<Integer>> tierReplicas= new HashMap<String,List<Integer>>(extension.getResourceContainer().size());			
+				for(ResourceContainer tier:extension.getResourceContainer()){
+					String id = tier.getId();
+					String type = tier.getCloudResource().getResourceSizeID();
+					tierTypes.put(id,type);
+					
+					List<Integer> tierReplicasValues = new ArrayList<Integer>(tier.getCloudResource().getReplicas().getReplicaElement().size()); 
+					for(ReplicaElement replica:tier.getCloudResource().getReplicas().getReplicaElement()){
+						tierReplicasValues.add(replica.getHour(), replica.getValue());
+					}
+					tierReplicas.put(id,tierReplicasValues);
+				}
+				replicas.put(name, tierReplicas);
+				types.put(name, tierTypes);				
+			}
+		}
+		
+		
+		//wirte the header of the file
+		String header = "";
+		//get the first model from the replicas hashmap for reference when building the file header
+		String firstModelName = replicas.keySet().iterator().next();
+		Map<String, List<Integer>> firstModelMap = replicas.get(firstModelName);
+		header +="Model Name,";
+		for(String tierId: firstModelMap.keySet()){
+			header += "TierID,";
+			header += "Type,";
+			for(int i=0; i<firstModelMap.get(tierId).size();i++){
+				header += "H"+i+",";
+			}
+		}
+		
+		
+		writer.println(header);
+		//write the data		
+		for(String modelName:types.keySet()){
+			String line = modelName+",";
+			Map<String, String> tierTypeMap = types.get(modelName);
+			Map<String, List<Integer>> tierReplicasMap = replicas.get(modelName);
+			for(String tierId: tierTypeMap.keySet()){
+				line += tierId+",";
+				line += tierTypeMap.get(tierId)+",";
+				List<Integer> replicaList = tierReplicasMap.get(tierId);
+				for(int i=0; i<replicaList.size();i++){
+					line += replicaList.get(i)+",";
+				}
+			}
+			writer.println(line);
+		}	
+		writer.close();
+		return 0;
+	}
 
 	private int exportStatistics() {
 		PrintWriter writer = null;
@@ -164,7 +246,7 @@ public class Analyzer {
 		baseDir = Paths.get(directory);
 	}
 
-	public void setOutputFile(String outputfile) {
+	public void setStatisticFile(String outputfile) {
 		statisticsFile = Paths.get(outputfile);
 	}
 
@@ -174,6 +256,15 @@ public class Analyzer {
 
 	public Path getStatisticsFile() {
 		return statisticsFile;
+	}
+
+	public Path getSolutionFile() {
+		return solutionFile;
+	}
+
+	
+	public void setSolutionFile(String solutionFile) {
+		this.solutionFile = Paths.get(solutionFile);
 	}
 
 
